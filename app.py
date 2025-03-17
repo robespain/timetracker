@@ -155,3 +155,13 @@ def end_break():
             'status': 'error',
             'message': 'Un error ocurrió al finalizar el descanso'
         }), 500
+
+@app.route('/check-break-status', methods=['GET'])
+def check_break_status():
+    break_state = BreakState.query.first()
+    if break_state and break_state.is_active:
+        return jsonify({
+            'status': 'active',
+            'start_timestamp': break_state.start_time.timestamp()
+        })
+    return jsonify({'status': 'inactive'})
