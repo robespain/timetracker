@@ -16,27 +16,13 @@ class SheetsService:
     def __init__(self):
         """Initialize the Google Sheets service"""
         try:
-            # Get service account from file path first
-            service_account_paths = [
-                "/etc/secrets/Pasted--type-service-account-project-id-ferrous-biplane-371416-private-key-id-a8e44c-1741852814317.txt",
-                "attached_assets/Pasted--type-service-account-project-id-ferrous-biplane-371416-private-key-id-a8e44c-1741852814317.txt"
-            ]
+            # Get service account JSON from environment variable
+            service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
+            if not service_account_json:
+                raise ValueError("SERVICE_ACCOUNT_JSON environment variable not found")
             
-            service_account_info = None
-            for path in service_account_paths:
-                try:
-                    with open(path) as f:
-                        service_account_info = json.load(f)
-                        break
-                except FileNotFoundError:
-                    continue
-            
-            if not service_account_info:
-                # Fallback to environment variable if file not found
-                service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
-                if not service_account_json:
-                    raise ValueError("Service account credentials not found in files or environment")
-                service_account_info = json.loads(service_account_json)
+            # Parse service account info
+            service_account_info = json.loads(service_account_json)
             self.service_account_email = service_account_info.get('client_email')
             
             # Create credentials
@@ -89,7 +75,7 @@ class SheetsService:
         try:
             creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
             if not creds_json:
-                raise ValueError("Google Sheets credentials not found in environment")
+                raise ValueError("Please add GOOGLE_SHEETS_CREDENTIALS to your Secrets in the Tools menu")
 
             # Parse the JSON string into a dictionary
             creds_info = json.loads(creds_json)
