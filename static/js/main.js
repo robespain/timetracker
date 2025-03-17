@@ -5,11 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listen for storage events
     window.addEventListener('storage', (e) => {
         if (e.key === 'breakEnded') {
-            clearInterval(timerInterval);
-            startBreakBtn.style.display = 'block';
-            endBreakBtn.style.display = 'none';
-            timerDisplay.textContent = '00:00:00';
-            showStatus('¡Descanso finalizado en otra ventana!', 'info');
+            handleBreakEnd();
         }
     });
 
@@ -62,6 +58,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
+    // Handle timer end
+    function handleBreakEnd() {
+        clearInterval(timerInterval);
+        startBreakBtn.style.display = 'block';
+        endBreakBtn.style.display = 'none';
+        timerDisplay.textContent = '00:00:00';
+        showStatus('¡Descanso finalizado en otra ventana!', 'info');
+    }
+
     // Start break handler
     startBreakBtn.addEventListener('click', async () => {
         try {
@@ -89,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // End break handler
     endBreakBtn.addEventListener('click', () => {
         clearInterval(timerInterval);
+        // Notify other windows
+        localStorage.setItem('breakEnded', Date.now().toString());
         reasonModal.show();
     });
 
