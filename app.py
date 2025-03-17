@@ -93,13 +93,10 @@ def start_break():
 @app.route('/check-break-status', methods=['GET'])
 def check_break_status():
     break_state = BreakState.query.first()
-    if break_state and break_state.is_active:
-        return jsonify({
-            'status': 'active',
-            'start_date': break_state.start_date,
-            'start_time': break_state.start_time_str,
-            'start_timestamp': break_state.start_time.timestamp()
-        })
+    if break_state:
+        # Reset break state if exists
+        break_state.is_active = False
+        db.session.commit()
     return jsonify({'status': 'inactive'})
 
 @app.route('/end-break', methods=['POST'])
