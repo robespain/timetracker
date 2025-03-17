@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);  // Evita intervalos duplicados
+        if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(updateTimer, 1000);
     }
 
@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', function() {
         timerDisplay.textContent = '00:00:00';
         startBreakBtn.style.display = 'block';
         endBreakBtn.style.display = 'none';
-        localStorage.removeItem('breakActive');
+        
+        // 💡 Guardamos en localStorage que el descanso ha terminado
+        localStorage.setItem('breakActive', 'false');
         localStorage.removeItem('startTime');
     }
 
@@ -57,13 +59,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    if (localStorage.getItem('breakActive') === 'true') {
+    // 💡 Al cargar la página, revisamos si hay un descanso activo
+    if (localStorage.getItem('breakActive') === 'true' && localStorage.getItem('startTime')) {
         startTime = new Date(parseInt(localStorage.getItem('startTime')));
         startTimer();
         startBreakBtn.style.display = 'none';
         endBreakBtn.style.display = 'block';
+    } else {
+        stopTimer();
     }
 
+    // 💡 Escuchamos cambios en localStorage para detener el temporizador en todas las ventanas
     window.addEventListener('storage', (e) => {
         if (e.key === 'breakEnded') {
             stopTimer();
@@ -122,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 stopTimer();
                 breakReasonInput.value = '';
                 
+                // 💡 Notificamos a todas las ventanas que el descanso terminó
                 localStorage.setItem('breakEnded', Date.now().toString());
 
                 showStatus('¡Hora de descanso logueada con éxito!', 'success');
