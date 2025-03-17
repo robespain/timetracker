@@ -16,13 +16,18 @@ class SheetsService:
     def __init__(self):
         """Initialize the Google Sheets service"""
         try:
-            # Get service account JSON from environment variable
-            service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
-            if not service_account_json:
-                raise ValueError("SERVICE_ACCOUNT_JSON environment variable not found")
+            # Get service account from file or environment variable
+            service_account_path = "/etc/secrets/Pasted--type-service-account-project-id-ferrous-biplane-371416-private-key-id-a8e44c-1741852814317.txt"
             
-            # Parse service account info
-            service_account_info = json.loads(service_account_json)
+            try:
+                with open(service_account_path) as f:
+                    service_account_info = json.load(f)
+            except FileNotFoundError:
+                # Fallback to environment variable if file not found
+                service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
+                if not service_account_json:
+                    raise ValueError("Service account credentials not found")
+                service_account_info = json.loads(service_account_json)
             self.service_account_email = service_account_info.get('client_email')
             
             # Create credentials
@@ -75,7 +80,7 @@ class SheetsService:
         try:
             creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
             if not creds_json:
-                raise ValueError("Please add GOOGLE_SHEETS_CREDENTIALS to your Secrets in the Tools menu")
+                raise ValueError("Google Sheets credentials not found in environment")
 
             # Parse the JSON string into a dictionary
             creds_info = json.loads(creds_json)
