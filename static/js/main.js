@@ -1,17 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     feather.replace();
 
+    // Elementos de la interfaz
     const startBreakBtn = document.getElementById('startBreakBtn');
     const endBreakBtn = document.getElementById('endBreakBtn');
     const timerDisplay = document.getElementById('timerDisplay');
-    const reasonModal = new bootstrap.Modal(document.getElementById('reasonModal'));
-    const breakReasonInput = document.getElementById('breakReason');
-    const submitReasonBtn = document.getElementById('submitReason');
-    const statusMessage = document.getElementById('statusMessage');
 
     let startTime;
     let timerInterval;
 
+    // Función para actualizar el temporizador en pantalla
     function updateTimer() {
         const now = new Date();
         const diff = now - startTime;
@@ -25,58 +23,34 @@ document.addEventListener('DOMContentLoaded', function() {
             String(seconds).padStart(2, '0');
     }
 
-    function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimer, 1000);
-    }
-
-    function stopTimer() {
-        clearInterval(timerInterval);
-        timerDisplay.textContent = '00:00:00';
-        startBreakBtn.style.display = 'block';
-        endBreakBtn.style.display = 'none';
-        
-        // 💡 Guardamos en localStorage que el descanso ha terminado
-        localStorage.setItem('breakActive', 'false');
-        localStorage.removeItem('startTime');
-    }
-
-    function checkBreakStatus() {
-        fetch('/check-break-status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'active') {
-                    startTime = new Date(data.start_timestamp * 1000);
-                    localStorage.setItem('breakActive', 'true');
-                    localStorage.setItem('startTime', startTime.getTime().toString());
-                    startTimer();
-                    startBreakBtn.style.display = 'none';
-                    endBreakBtn.style.display = 'block';
-                    showStatus('Descanso en progreso', 'info');
-                } else {
-                    stopTimer();
-                }
-            });
-    }
-
-    // 💡 Al cargar la página, revisamos si hay un descanso activo
-    if (localStorage.getItem('breakActive') === 'true' && localStorage.getItem('startTime')) {
-        startTime = new Date(parseInt(localStorage.getItem('startTime')));
-        startTimer();
-        startBreakBtn.style.display = 'none';
-        endBreakBtn.style.display = 'block';
-    } else {
-        stopTimer();
-    }
-
-    // 💡 Escuchamos cambios en localStorage para detener el temporizador en todas las ventanas
+    // Escuchar eventos de almacenamiento para sincronizar ventanas
     window.addEventListener('storage', (e) => {
+        if (e.key === 'breakStart') {
+            startTime = new Date(parseInt(localStorage.getItem('breakStart')));
+            startBreakBtn.style.display = 'none';
+            endBreakBtn.style.display = 'block';
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
         if (e.key === 'breakEnded') {
-            stopTimer();
-            showStatus('¡Descanso finalizado en otra ventana!', 'info');
+            clearInterval(timerInterval);
+            startBreakBtn.style.display = 'block';
+            endBreakBtn.style.display = 'none';
+            timerDisplay.textContent = '00:00:00';
         }
     });
 
+    // Verificar si hay un descanso activo al cargar la página
+    const savedStart = localStorage.getItem('breakStart');
+    if (savedStart) {
+        startTime = new Date(parseInt(savedStart));
+        startBreakBtn.style.display = 'none';
+        endBreakBtn.style.display = 'block';
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // Iniciar descanso
     startBreakBtn.addEventListener('click', async () => {
         try {
             const response = await fetch('/start-break', { method: 'POST' });
@@ -84,62 +58,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.status === 'success') {
                 startTime = new Date();
-                localStorage.setItem('breakActive', 'true');
-                localStorage.setItem('startTime', startTime.getTime().toString());
-                startTimer();
+                localStorage.setItem('breakStart', startTime.getTime()); // Guardar en localStorage
+                window.dispatchEvent(new Event('storage')); // Forzar actualización en otras ventanas
                 
                 startBreakBtn.style.display = 'none';
                 endBreakBtn.style.display = 'block';
-                showStatus('¡Descanso iniciado!', 'success');
-            } else {
-                showStatus('Fallo al iniciar el descanso', 'danger');
+                timerInterval = setInterval(updateTimer, 1000);
             }
         } catch (error) {
             console.error('Error:', error);
-            showStatus('Fallo al iniciar el descanso', 'danger');
         }
     });
 
-    endBreakBtn.addEventListener('click', () => {
-        clearInterval(timerInterval);
-        reasonModal.show();
-    });
-
-    submitReasonBtn.addEventListener('click', async () => {
-        const reason = breakReasonInput.value.trim();
-        
-        if (!reason) {
-            showStatus('Por favor, introduce un motivo para el descanso', 'warning');
-            return;
-        }
-
+    // Finalizar descanso
+    endBreakBtn.addEventListener('click', async () => {
         try {
-            const response = await fetch('/end-break', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason })
-            });
+            const response = await fetch('/end-break', { method: 'POST' });
             const data = await response.json();
 
             if (data.status === 'success') {
-                reasonModal.hide();
-                stopTimer();
-                breakReasonInput.value = '';
-                
-                // 💡 Notificamos a todas las ventanas que el descanso terminó
-                localStorage.setItem('breakEnded', Date.now().toString());
+                localStorage.removeItem('breakStart');
+                localStorage.setItem('breakEnded', Date.now());
+                window.dispatchEvent(new Event('storage'));
 
-                showStatus('¡Hora de descanso logueada con éxito!', 'success');
-            } else {
-                showStatus(data.message || 'Fallo al loguear el descanso', 'danger');
+                startBreakBtn.style.display = 'block';
+                endBreakBtn.style.display = 'none';
+                clearInterval(timerInterval);
+                timerDisplay.textContent = '00:00:00';
             }
         } catch (error) {
             console.error('Error:', error);
-            showStatus('Error al loguear la hora', 'danger');
         }
     });
-
-    checkBreakStatus();
 });
